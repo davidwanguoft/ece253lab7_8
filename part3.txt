@@ -1,0 +1,45 @@
+			.text
+			.global			_start
+_start:			LDR			R4, =TESTNUM		// load address of data
+			MOV			R5, #0			// R5 holds result
+
+MAIN:			LDR			R1, [R4], #4		// load contents @ address R4 into R1 and increment R4 by 4
+
+			CMP			R1, #0			// compare next word w/ 0s
+			BEQ			END			// if next word of data is all 0s, end program
+
+			BL			ONES			// go into ONES subroutine
+RET:			CMP			R5, R0			// result is returned in R0, comp w/ R5(R0-R5)
+			MOVLT			R5, R0			// if compare is neg, (so R5 > R0), replace R5 w/ R0
+			B			MAIN			// return to main loop
+
+END:			B			END
+
+
+TEST_NUM:		.word			0x
+			.word			0x
+			.word			0x
+			.word			0x
+			.word			0x
+			.word			0x
+			.word			0x
+			.word			0x
+			.word			0x
+			.word			0x
+
+/* SUBROUTINE
+Parameter: data will be in R1
+Return: longest length of 1s will be in R0
+*/
+
+ONES:			MOV			R0, #0			// R0 holds result
+
+LOOP:			CMP			R1, #0			// loop executes until data contains no more 1s
+			BEQ			ENDONES
+			LSR			R2, R1, #1		// perform SHIFT, followed by AND
+			AND 			R1, R1, R2		
+			ADD 			R0, #1			// count the string lengths so far
+			B			LOOP
+ENDONES:		MOV			PC, LR			// exit subroutine
+
+			.end

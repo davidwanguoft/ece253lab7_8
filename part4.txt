@@ -1,0 +1,93 @@
+			.text 
+			.global 		_start 
+_start: 	LDR 			R4, =TEST_NUM 							// load the address of the data
+			MOV 			R5, #0 							// R5 will hold result of longest 1s
+			MOV 			R6, #0 							// R6 will hold result of longest 0s
+			MOV 			R7, #0 							// R7 will hold result of longest alternating
+MAIN:		LDR				R1, [R4]						//Load contents at the address of R4 into R1
+
+			CMP				R1, #0						//compare next word of data with 0s
+			BEQ				END						//if next word of data is all 0s, end program
+
+			BL				ONES						// go into ONES subroutine
+RET: 		CMP				R5, R0							// result is returned in R0, compare it with R5(R0-R5)
+			MOVLT			R5, R0							// if compare is negative(ie, R5 > R0), replace R5 with R0
+
+			LDR				R1, [R4]					//Load contents at the address of R4 into R1
+			BL				ZEROS						// go into ZEROS subroutine
+			CMP				R6, R0						// same as before, except with 0s
+			MOVLT			R6, R0		
+
+			LDR				R1, [R4], #4					//Load contents at the address of R4 into R1, increment R4 by 4
+			BL				ALTERNATE					// go into ALTERNATE subroutine
+	 		CMP				R7, R0						// same as before, except with 0s
+			MOVLT			R7, R0				
+			B				MAIN			
+
+END:		B				END
+
+TEST_NUM: 	.word 			0x0000000F
+			.word			0x00000005
+			.word			0x00155F00						//should have 10 0101s
+			.word			0x0000000A
+			.word			0x000A5000
+			.word			0x00000000
+
+/* SUBROUTINE ONES
+Parameter: data will be in R1
+Return: longest length of 1s will be in R0
+*/
+
+ONES:		MOV 			R0, #0 								// R0 will hold the result 
+LOOP: 		CMP 			R1, #0 								// loop until the data contains no more 1’s 
+			BEQ 			ENDONES 
+			LSR 			R2, R1, #1 						// perform SHIFT, followed by AND 
+			AND 			R1, R1, R2 
+			ADD 			R0, #1 							// count the string lengths so far 
+			B 				LOOP 
+ENDONES:	MOV 			PC, LR								// exit subroutine
+
+/* SUBROUTINE ZER0S
+Parameter: data will be in R1
+Return: longest length of 1s will be in R0
+*/
+
+ZEROS:		MOV 			R0, #0 								// R0 will hold the result 
+			MVN				R1, R1						// Get the complement of R1, 0s become 1s
+LOOP2: 		CMP 			R1, #0 								// loop until the data contains no more 1’s 
+			BEQ 			ENDZER0S 
+			LSR 			R2, R1, #1 						// perform SHIFT, followed by AND 
+			AND 			R1, R1, R2 
+			ADD 			R0, #1 							// count the string lengths so far 
+			B 				LOOP2 
+ENDZER0S:	MOV 			PC, LR								// exit subroutine
+
+/* SUBROUTINE ALTERNATE
+Parameter: data will be in R1
+Return: longest length of 1s will be in R0
+*/
+
+ALTERNATE:	MOV 			R0, #0 								// R0 will hold the result
+			EOR				R1, R1, #0xAA000000				// XOR string with 1010
+			EOR				R1, R1, #0x00AA0000				// XOR string with 1010
+			EOR				R1, R1, #0x0000AA00				// XOR string with 1010
+			EOR				R1, R1, #0x000000AA				// XOR string with 1010
+			MVN				R3, R1						// Get the complement of R1, 0s become 1s, store in R3
+													// find longest patern of 1s
+ONESLOOP: 	CMP 			R1, #0 								// loop until the data contains no more 1’s 
+			BEQ 			ZEROSLOOP						// go to finding longest patern of 0s
+			LSR 			R2, R1, #1 						// perform SHIFT, followed by AND 
+			AND 			R1, R1, R2 	
+			ADD 			R0, #1 							// count the string lengths so far 
+			B 				ONESLOOP 
+ZEROSLOOP:	CMP 			R3, #0 								// loop until the data contains no more 1’s 
+			BEQ 			COMPARE 
+			LSR 			R2, R3, #1 						// perform SHIFT, followed by AND 
+			AND 			R3, R3, R2 
+			ADD 			R1, #1 							// count the string lengths so far, store in R1
+			B 				ZEROSLOOP
+COMPARE:	CMP 			R0, R1								// compare r0(longest 1s) with R1(longest 0s)
+			MOVLT			R0, R1							// if R0-R1 is negative, replace R0 with R1
+			MOV 			PC, LR							// exit subroutine
+
+			.end
